@@ -1,0 +1,3 @@
+guard 'latexercise' do
+  watch(/^.+(\.exs)/)
+end

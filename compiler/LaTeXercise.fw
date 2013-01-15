@@ -1,0 +1,484 @@
+@=~
+~p maximum_input_line_length = infinity
+
+######################################################
+## LaTeXercise - LaTeX exercise sheets on stereoids ##
+######################################################
+
+The generator specified in this file accepts an input language to describe exercise sheets. From that, it generates a high-quality LaTeX template which compiles to PDF.
+
+# TODO: Decsribe aspects of exercise sheets and the input language
+
+The generator should accept the following input language:
+Check with: eli > LaTeXercise.fw  +monitor +arg=(LaTeXercise.fw : fwGen/in.ok) : mon
+
+~O~<in.ok~>~{
+-----
+lecture: Generating Software from Specifications
+lecturer: Prof. Dr. Kastens
+institution: University Paderborn
+term: Summer term 2012
+release: 10.07.2012
+submission: 17.07.2012
+--
+*This* is the description lecture: of the first assignment.
+
+  This _is a_ subtask.
+
+
+This is the *description* of the second _assignment._
+
+  This is a subtask.
+~}
+
+
+The generator shouldn't accept the following input language:
+Check with: eli > LaTeXercise.fw  +monitor +arg=(LaTeXercise.fw : fwGen/in.err) : mon
+
+~O~<in.err~>~{
+---
+foo: bar
+---
+
+
+~}
+
+######################
+## Lexical analysis ##
+######################
+
+Specification of terminals:
+
+~O~<LaTeXercise.gla~>~{
+PropertyKey:      $(lecture|lecturer|institution|term|issue|release|submission) [mkPropKey]
+StringToken:      $[a-zA-Z0-9.,!?]+ [mkstr]
+LaTeXMathSymbol:  $[<>] [mkstr]
+NEW_LINE_INDENT:  $[\r\n]+(\040(\040)+|\t)
+NEW_LINE:         NEW_LINE
+~}
+
+
+########################
+## Syntactic analysis ##
+########################
+
+Specification of context-free grammar:
+
+~O~<LaTeXercise.con~>~{
+LaTeXercise: Header Exercises.
+
+Header: HeaderSeparator KeyValueDef+ HeaderSeparator.
+HeaderSeparator: Dashes.
+HeaderSeparator: NEW_LINE Dashes.
+Dashes: Dashes '-'.
+Dashes: '-'.
+KeyValueDef: NEW_LINE PropertyKey ':' UnformattedString.
+
+Exercises: Exercise+.
+Exercise: NEW_LINE Description Subtasks.
+Exercise: NEW_LINE.
+
+Subtasks: EnumeratedSubtasks.
+Subtasks: ItemizedSubtasks.
+Subtasks: .
+
+EnumeratedSubtasks: EnumeratedSubtasks EnumeratedSubtask.
+EnumeratedSubtasks: EnumeratedSubtask.
+EnumeratedSubtask: NEW_LINE_INDENT Description.
+
+ItemizedSubtasks: ItemizedSubtasks ItemizedSubtask.
+ItemizedSubtasks: ItemizedSubtask.
+ItemizedSubtask: NEW_LINE_INDENT '-' Description.
+
+Description: String.
+
+String: StringFragment String.
+String: FormattedStringFragment String.
+String: StringFragment.
+String: FormattedStringFragment.
+
+FormattedStringFragment: BoldString.
+FormattedStringFragment: ItalicString.
+BoldString: '*' UnformattedString '*'.
+ItalicString: '_' UnformattedString '_'.
+
+UnformattedString: StringFragments.
+StringFragments: StringFragments StringFragment.
+StringFragments: StringFragment.
+StringFragment: StringToken.
+StringFragment: PropertyKey.
+StringFragment: ':'.
+StringFragment: LaTeXMathSymbol.
+~}
+
+
+#######################
+## Semantic analysis ##
+#######################
+
+~O~<LaTeXercise.head~>~{
+#include "LaTeXercise.h"
+~}
+
+~O~<LaTeXercise.h~>~{
+#include "csm.h"
+#include "pdl_gen.h"
+
+extern void mkPropKey (char *key, int l, int *c, int *i);
+extern DefTableKey MapToKey(int i);
+extern char* KeyToValue(int key);
+
+#define LECTURE_KEY 1
+#define LECTURER_KEY 2
+#define INSTITUTION_KEY 3
+#define TERM_KEY 4
+#define ISSUE_KEY 5
+#define RELEASE_KEY 6
+#define SUBMISSION_KEY 7
+~}
+
+lecture => 1
+lecturer => 2
+institution => 3
+term => 4
+issue => 5
+release => 6
+submission => 7
+
+~O~<LaTeXercise.c~>~{
+#include <stdio.h>
+#include "LaTeXercise.h"
+
+void mkPropKey (char *key, int l, int *c, int *i)
+{
+  switch (key[0]) {
+    case 'l': *i = (l == SUBMISSION_KEY ? LECTURE_KEY : LECTURER_KEY);
+    break;
+    case 'i': *i = (key[1] == 'n' ? INSTITUTION_KEY : ISSUE_KEY);
+    break;
+    case 't': *i = TERM_KEY;
+    break;
+    case 'r': *i = RELEASE_KEY;
+    break;
+    case 's': *i = SUBMISSION_KEY;
+    break;
+  }
+}
+
+char* KeyToValue(int key)
+{
+    switch (key){
+      case LECTURE_KEY : return "lecture";
+      break;
+    case LECTURER_KEY: return "lecturer";
+      break;
+    case INSTITUTION_KEY: return "institution";
+      break;
+    case TERM_KEY: return "term";
+      break;
+    case ISSUE_KEY: return "issue";
+      break;
+    case RELEASE_KEY: return "release";
+      break;
+    case SUBMISSION_KEY: return "submission";
+      break;
+    }
+    
+} 
+
+typedef struct {
+  int i;
+  DefTableKey key;
+} DefTableKeyMapping;
+
+int num_mappings_allocated = 6;
+int num_mappings = 0;
+DefTableKeyMapping **mapping_arr = NULL;
+
+DefTableKey MapToKey(int i)
+{
+  if(mapping_arr == NULL) {
+    mapping_arr = (DefTableKeyMapping**) malloc(sizeof(DefTableKeyMapping*) * num_mappings_allocated);
+  }
+
+  int j;
+  for(j = 0; j < num_mappings; j++)
+  {
+    DefTableKeyMapping *mapping = mapping_arr[j];
+    if(mapping->i == i) {
+      return mapping->key;
+    }
+  }
+
+  DefTableKeyMapping *new_mapping = (DefTableKeyMapping*) malloc(sizeof(DefTableKeyMapping*)); 
+  new_mapping->i = i;
+  new_mapping->key = NewKey();
+
+  // realloc is expensive => do it for multiple keys in advance
+  if(num_mappings == num_mappings_allocated) {
+    num_mappings_allocated += 6;
+    mapping_arr = (DefTableKeyMapping**)realloc(mapping_arr, num_mappings_allocated * sizeof(DefTableKeyMapping*));
+  }
+
+  mapping_arr[num_mappings] = new_mapping;
+  num_mappings++;
+  return new_mapping->key;
+}
+
+~}
+
+~O~<LaTeXercise.pdl~>~{
+IsDefined: int;
+~}
+
+~O~<LaTeXercise.lido~>~{
+
+  SYMBOL LaTeXercise, KeyValueDef: DefDone: VOID SYNT;
+
+  RULE: LaTeXercise ::= Header Exercises COMPUTE
+    LaTeXercise.DefDone = CONSTITUENTS KeyValueDef.DefDone;
+
+    IF (EQ (GetIsDefined(MapToKey(LECTURE_KEY), 0), 0), 
+      message(ERROR, "lecture must be defined", 0, COORDREF))
+        <- LaTeXercise.DefDone;
+
+    IF (EQ (GetIsDefined(MapToKey(LECTURER_KEY), 0), 0), 
+      message(ERROR, "lecturer must be defined", 0, COORDREF))
+        <- LaTeXercise.DefDone;
+
+    IF (EQ (GetIsDefined(MapToKey(INSTITUTION_KEY), 0), 0), 
+      message(ERROR, "institution must be defined", 0, COORDREF))
+        <- LaTeXercise.DefDone;
+
+    IF (EQ (GetIsDefined(MapToKey(TERM_KEY), 0), 0), 
+      message(ERROR, "term must be defined", 0, COORDREF))
+        <- LaTeXercise.DefDone;
+
+  END;
+
+  RULE: KeyValueDef ::= NEW_LINE PropertyKey ':' UnformattedString COMPUTE
+    KeyValueDef.DefDone =
+      IF (GetIsDefined(MapToKey(PropertyKey), 0),
+        message( ERROR, "key was already defined", 0, COORDREF ),
+        ResetIsDefined(MapToKey(PropertyKey), 1));
+  END;
+
+~}
+
+~O~<InputFileName.head~>~{
+#include "source.h"
+~}
+
+~O~<LibModules.specs~>~{
+$/Tech/Strings.specs
+$/Output/PtgCommon.fw
+~}
+
+~O~<Frame.ptg~>~{
+Frame:
+  "\\documentclass[12pt]{LaTeXercise}\n"
+  "\\usepackage{enumerate}\n"
+  "\\begin{document}\n"
+  $1 /* definitions */
+  "\\kopf{}\n"
+  $2 /* exercises */
+  "\\end{document}\n"
+~}
+
+
+~O~<KeyValueDef.ptg~>~{
+KeyValueDef:
+  "\\"
+  $1 /* key */
+  "{"
+  $2 /* value */
+  "}\n"
+~}
+
+
+~O~<Exercise.ptg~>~{
+Exercise:
+  "\\begin{task}\n"
+  $1 /* description */
+  "\n"
+  $2 /* subtasks */
+  "\\end{task}\n\n"
+~}
+
+
+~O~<Subtasks.ptg~>~{
+EnumeratedSubtasks:
+  {"\\begin{enumerate}[a)]\n"}
+  $1 /* subtasks */
+  {"\\end{enumerate}\n\n"}
+
+ItemizedSubtasks:
+  {"\\begin{itemize}\n"}
+  $1 /* subtasks */
+  {"\\end{itemize}\n\n"}
+~}
+
+
+~O~<Subtask.ptg~>~{
+Subtask:
+  "\\item "
+  $1 /* description */
+  "\n"
+~}
+
+
+
+~O~<FormattedStringFragments.ptg~>~{
+BoldString:
+  "\\textbf{" $ "}"
+
+ItalicString:
+  "\\textit{" $ "}"
+~}
+
+~O~<StringSeq.ptg~>~{
+StringSeq: $1 { " " } $2
+~}
+
+~O~<LaTeXMathSymbol.ptg~>~{
+LaTeXMathSymbol: "$" $ string "$"
+~}
+
+
+
+~O~<LaTeXerciseOutput.lido~>~{
+ATTR Code: PTGNode;
+
+SYMBOL LaTeXercise COMPUTE
+  PTGOutFile (CatStrStr (SRCFILE, ".tex"), SYNT.Code);
+END;
+
+SYMBOL LaTeXercise COMPUTE
+  SYNT.Code = PTGFrame(
+    CONSTITUENTS KeyValueDef.Code
+      WITH (PTGNode, PTGSeq, IDENTICAL, PTGNull),
+    CONSTITUENTS Exercise.Code
+      WITH (PTGNode, PTGSeq, IDENTICAL, PTGNull));
+END;
+~}
+
+~O~<KeyValueDefOutput.lido~>~{
+RULE: KeyValueDef ::= NEW_LINE PropertyKey ':' UnformattedString COMPUTE
+  KeyValueDef.Code = PTGKeyValueDef(PTGAsIs( KeyToValue(PropertyKey) ), UnformattedString.Code);
+END;
+~}
+
+
+~O~<ExerciseOutput.lido~>~{
+
+RULE: Exercise ::= NEW_LINE Description Subtasks COMPUTE
+  Exercise.Code = PTGExercise(Description.Code, Subtasks.Code);
+END;
+
+RULE: Exercise ::= NEW_LINE COMPUTE
+  Exercise.Code = PTGNull();
+END;
+
+RULE: Subtasks ::= COMPUTE
+  Subtasks.Code = PTGNull();
+END;
+
+RULE: Subtasks ::= EnumeratedSubtasks COMPUTE
+  Subtasks.Code = PTGEnumeratedSubtasks(
+    CONSTITUENTS EnumeratedSubtask.Code
+      WITH(PTGNode, PTGSeq, IDENTICAL, PTGNull));
+END;
+
+RULE: Subtasks ::= ItemizedSubtasks COMPUTE
+  Subtasks.Code = PTGItemizedSubtasks(
+    CONSTITUENTS ItemizedSubtask.Code
+      WITH(PTGNode, PTGSeq, IDENTICAL, PTGNull));
+END;
+
+RULE: EnumeratedSubtask ::= NEW_LINE_INDENT Description COMPUTE
+  EnumeratedSubtask.Code = PTGSubtask(Description.Code);
+END;
+
+RULE: ItemizedSubtask ::= NEW_LINE_INDENT '-' Description COMPUTE
+  ItemizedSubtask.Code = PTGSubtask(Description.Code);
+END;
+
+RULE: Description ::= String COMPUTE
+  Description.Code = String.Code;
+END;
+
+~}
+
+
+~O~<StringOutput.lido~>~{
+
+RULE: String ::= StringFragment COMPUTE
+  String.Code = StringFragment.Code;
+END;
+
+RULE: String ::= FormattedStringFragment COMPUTE
+  String.Code = FormattedStringFragment.Code;
+END;
+
+RULE: String ::= StringFragment String COMPUTE
+  String[1].Code = PTGStringSeq(StringFragment.Code, String[2].Code);
+END;
+
+RULE: String ::= FormattedStringFragment String COMPUTE
+  String[1].Code = PTGStringSeq(FormattedStringFragment.Code, String[2].Code);
+END;
+
+~}
+
+
+~O~<FormattedStringFragmentOutput.lido~>~{
+
+RULE: FormattedStringFragment ::= BoldString COMPUTE
+  FormattedStringFragment.Code = BoldString.Code;
+END;
+
+RULE: FormattedStringFragment ::= ItalicString COMPUTE
+  FormattedStringFragment.Code = ItalicString.Code;
+END;
+
+RULE: BoldString ::= '*' UnformattedString '*' COMPUTE
+  BoldString.Code = PTGBoldString(UnformattedString.Code);
+END;
+
+RULE: ItalicString ::= '_' UnformattedString '_' COMPUTE
+  ItalicString.Code = PTGItalicString(UnformattedString.Code);
+END;
+
+~}
+
+
+~O~<UnformattedStringOutput.lido~>~{
+
+SYMBOL UnformattedString COMPUTE
+  SYNT.Code = CONSTITUENTS StringFragment.Code
+    WITH (PTGNode, PTGStringSeq, IDENTICAL, PTGNull);
+END;
+
+~}
+
+
+~O~<StringFragmentOutput.lido~>~{
+
+RULE: StringFragment ::= ':' COMPUTE
+  StringFragment.Code = PTGAsIs(":");
+END;
+
+RULE: StringFragment ::= PropertyKey COMPUTE
+  StringFragment.Code = PTGAsIs( KeyToValue(PropertyKey) );
+END;
+
+RULE: StringFragment ::= StringToken COMPUTE
+  StringFragment.Code = PTGAsIs( StringTable(StringToken) );
+END;
+
+RULE: StringFragment ::= LaTeXMathSymbol COMPUTE
+  StringFragment.Code = PTGLaTeXMathSymbol( StringTable(LaTeXMathSymbol) );
+END;
+
+~}
+

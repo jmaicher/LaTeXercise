@@ -1,0 +1,44 @@
+\documentclass{LaTeXercise}
+\begin{document}
+
+% ****************************
+% metadata definitions *******
+% ****************************
+
+\lecture{Generating Software from Specification}
+\lecturer{Prof. Dr. Uwe Kastens}
+\institution{University of Paderborn}
+\term{Summer term 2012}
+\issue{3}
+\release{2012-05-15}
+\submission{2012-05-21}
+
+
+% ****************************
+% task descriptions **********
+% ****************************
+
+\begin{task}
+This is the description of the first task which consists of numbered subtasks
+
+\begin{enumerate}[a)]
+  \item This is the first subtask. In order to express task hierarchy the new line has to start with either a tab or whitespace
+  \item This is the second numbered subtask
+\end{enumerate}
+\end{task}
+
+\begin{task}
+This is the second task which has itemized subtasks
+
+\begin{itemize}
+  \item When subtasks start with a dash they will be itemized and not numbered
+  \item This is another itemized subtask
+  \item The third itemized subtask is the last
+\end{itemize}
+\end{task}
+
+\begin{task}
+This is the last task which does not have subtasks
+\end{task}
+
+\end{document}

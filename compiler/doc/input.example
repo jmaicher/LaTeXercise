@@ -1,0 +1,25 @@
+---
+lecture: Generating Software from Specifications
+lecturer: Prof. Dr. Uwe Kastens
+institution: University of Paderborn
+term: Summer term 2012
+issue: 3
+release: 2012-05-15
+submission: 2012-05-21
+---
+
+This is the description of the first task which consists of numbered subtasks
+
+  This is the first subtask. In order to express task hierarchy the new line has to start with either a tab or whitespace
+	
+  This is the second numbered subtask
+
+
+This is the second task which has itemized subtasks.
+
+  - When subtasks start with a dash they will be itemized and not numbered
+  - This is another itemized subtask
+  - The third itemized subtask is the last
+
+
+This is the last task which does not have subtasks

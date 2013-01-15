@@ -1,0 +1,4 @@
+source :gemcutter
+
+# specify gem deps in guard-latexercise.gemspec
+gemspec

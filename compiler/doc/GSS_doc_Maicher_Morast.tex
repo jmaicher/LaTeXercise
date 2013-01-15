@@ -1,0 +1,177 @@
+% \documentclass[conference,10pt,letterpaper,final]{IEEEtranKG}
+% \documentclass[conference,10pt,letterpaper,final]{IEEEtran}
+\documentclass[12pt,letterpaper, onecolumn]{article} 
+\usepackage{latex8KG}
+\usepackage{times}
+
+\usepackage{graphicx}
+\usepackage{hyperref}
+%\usepackage{ifpdf}
+% \ifpdf
+% \usepackage[pdftex]{graphicx}
+% \else
+% \usepackage{graphicx}
+% \fi
+\usepackage{subfigure}
+%\usepackage{stfloats}
+\usepackage{amsmath}
+\usepackage{amssymb}
+% \usepackage{amslatex}
+\usepackage{amsfonts} 
+\usepackage{xcolor, listings}
+
+\lstset{ %
+	breaklines=true,
+	basicstyle=\ttfamily\footnotesize,
+	frame=trBL,
+	captionpos=b
+}
+
+% \usepackage[ps2pdf=true]{hyperref}
+\pagestyle{empty}
+
+% \hypersetup{% Ä=\304; Ö=\326; Ü=\334
+%   ...
+\begin{document}
+
+\title{LaTeXercise - \textit{An exercise sheet generator}}
+
+% Must not forget to put in after double blind review is over ;-)
+\author{Julian Maicher, Alexander Morast \\
+ \textit{Universit\"at Paderborn, Supervisor: Prof. Dr. Uwe Kastens} \\ 
+ \textit{Generating Software from Specifications} \\
+ \textit{Email: jmaicher@mail.upb.de, alm@mail.upb.de}\\
+}
+
+\maketitle
+\thispagestyle{empty}
+
+\section{Introduction}
+
+Our goal is to create a simple and intuitive abstraction layer on top of \LaTeX{} to create high-quality exercise sheets. We want to enable our users to take advantages of \LaTeX{} without them having to write \LaTeX{}. Therefore we design a domain-specific language (DSL) to describe exercise sheets and we implement a compiler, \emph{LaTeXercise}, which will generate the proper \LaTeX{} source from our DSL.\\
+
+In section \ref{sec:anatomy} we will outline the anatomy of exercise sheets which will be used in section \ref{sec:dsl} as foundation to design an exercise sheet DSL. In section \ref{sec:output} we show how the output of the \emph{LaTeXercise} compiler will look like. Finally we will give future prospects on how we might improve the DSL and the compiler and how me might use it once the basic features are implemented.\\
+
+\section{Anatomy of exercise sheets}\label{sec:anatomy}
+
+This section describes the domain of exercise sheets and will be used to identify the requirements for our DSL. We do not aim to cover all edge cases but we do want to provide a good foundation which will be sufficient for the most general case.\\
+
+An exercise sheet will be published in the context of a \emph{lecture} which is held by a \emph{lecturer} in a specific \emph{term} at an \emph{educational institution}. It has a \emph{release date} and may has a \emph{submission date} and an \emph{issue} number. An exercise sheet consists of at least one \emph{task} which may include multiple \emph{subtasks }. Both, tasks and subtasks have a textual description. Tasks are numbered and subtasks are either numbered or itemized. Typically task numbering starts from 1) but could also start with an arbitrary \emph{startnumber}.
+
+\section{Design of the exercise sheet DSL}\label{sec:dsl}
+
+As we see in section \ref{sec:anatomy}, an exercise sheet consists of predefined metadata and different tasks. Thus, the DSL requirements can be divided into two main parts: 1) the description of the metadata and 2) the description of exercise tasks.\\
+
+\subsection{Metadata}
+
+In order to describe the metadata of an exercise sheet, a simple key-value mapping is sufficient. Therefor we've choosen the following syntax for our DSL: \texttt{\textless key\textgreater:\textless value\textgreater}. A list of the predefined metadata keys is shown in Table \ref{tab:metadata}.
+
+\begin{table}[!h]
+	\centering
+	\begin{tabular}{ | p{2cm} | p{2cm} | c | }
+		\hline
+		Name & Type & \\ \hline
+		\hline
+		lecture & \texttt{String} & \\
+		lecturer & \texttt{String} & \\
+		institution & \texttt{String} & \\
+		term & \texttt{String} & \\
+		release & \texttt{Date} & \\
+		submission & \texttt{Date} & \emph{optional} \\
+		issue & \texttt{Integer} & \emph{optional} \\
+		startnumber & \texttt{Integer} & \emph{optional} \\
+		\hline
+	\end{tabular}
+	\caption{Metadata of an exercise sheet}
+	\label{tab:metadata}
+\end{table}
+
+The metadata definitions have to be given in a metadata definition block which must be started and terminated by a line starting with one or more dashes (-). Metadata definitions inside the block must be separated by new lines. The metadata definition block should be given at the beginning of the file. Section \ref{sec:dsl-example} gives an example of a metadata definition block.\\
+
+\subsection{Exercise tasks}
+
+When describing an exercise sheet, our users will spend most of their time describing the specific exercise tasks and hence this part of the DSL should be as easy and convenient as possible.\\
+
+Tasks consist of a textual description and either numbered or itemized subtasks. Subtasks again have a textual description. As both, tasks and subtasks have a textual description, they can be represented by text blocks. Our DSL still needs ways to distinguish between multiple tasks and to express task hierarchy. Therefor we've decided on the most basal and intuitive ways we could think of: new lines and indentation.\\
+
+In order to describe the first task, our users can simply write down the task description as plain text. When they want to describe a new task, they just need to start a new line. If the new task is a subtask, the new line has to be indented. Indented lines either start with a \emph{whitespace} or \emph{tab} character. This is a feature because users may have set \emph{tabs} to be outputted as multiple \emph{whitespace} characters in their text editors and we don't want to be optionated about that.\\
+
+Subtasks are numbered by default. In order to express that they are itemized, the indented line can begin with a dash (-). The following section gives an example of task descriptions.\\
+
+\subsection{Example}\label{sec:dsl-example}
+
+Listing \ref{lst:input-example} gives a concrete example of our exercise sheet DSL. The metadata definition block is given at the beginning of the file. The first task has two numbered subtasks. The second task has three itemized subtasks and the third task does not have any subtasks at all. Because no \emph{startnumber} is given in the metadata, the task numbering will start from 1) by default.
+
+\begin{center}
+\begin{minipage}{0.8\textwidth}
+\lstinputlisting[caption={Concrete example of our exercise sheet DSL}, label=lst:input-example]{input.example}
+\end{minipage}
+\end{center}
+
+\section{\LaTeX{} output}\label{sec:output}
+
+The \emph{LaTeXercise} compiler takes as input the exercise sheet DSL defined in section \ref{sec:dsl} and compiles it to a proper \LaTeX{} source file. In order to simplify the output, we define a document class, \emph{LaTeXercise}, which is highly inspired by a document class created by Rolf Wanka\footnote{wanka@uni-paderborn.de} at the University of Paderborn. This document class will provide custom \LaTeX{} commands to set metadata and to describe tasks.
+
+\subsection{Example}
+
+Listing \ref{lst:output-example} gives an example output of the \emph{LaTeXercise} compiler for the input given in Listing \ref{lst:input-example}.
+
+\begin{center}
+\begin{minipage}{0.8\textwidth}
+\lstinputlisting[caption={Example output of the \emph{LaTeXercise} compiler}, label=lst:output-example]{output.example}
+\end{minipage}
+\end{center}
+
+
+\section{Future prospects}\label{sec:future}
+
+Once the basic features described in the previous sections are implemented, we might improve the DSL and the compiler with more functionality.\\
+
+\subsection{Text formatting}
+
+We plan to extend the exercise sheet DSL with basic text formatting options like \textit{italic}, \textbf{bold} and \texttt{code}. Furthermore we think about adding support for \underline{\href{http://google.com}{links}} and footnotes\footnote{This is a footnote} to the DSL. Tabel \ref{tab:formatting} shows a proposal of how the fomatting support in our DSL could look like. The proposed DSL-syntax conforms to the widely-used \emph{Markdown}\footnote{\url{http://daringfireball.net/projects/markdown/syntax}} syntax.
+
+\begin{table}[!h]
+	\centering
+	\begin{tabular}{ | p{3.5cm} | c | c | }
+		\hline
+		Formatting option & Input (DSL) & Output (\LaTeX)\\ \hline
+		\hline
+		\textit{italic} & *italic* & \texttt{{\textbackslash}textit\{italic\}}\\
+		\textbf{bold} & **bold** & \texttt{{\textbackslash}textbf\{bold\}} \\
+		\texttt{code} & \`{}code\`{} & \texttt{{\textbackslash}texttt\{code\}} \\
+		\underline{\href{http://google.com}{links}} & [label](http://..) & \texttt{{\textbackslash}href\{http://..\}\{label\}} \\
+		footnote\footnote{This is a footnote} & \_(text) & \texttt{{\textbackslash}footnote\{text\}} \\
+		\hline
+	\end{tabular}
+	\caption{Future prospects for the DSL to support formatting options}
+	\label{tab:formatting}
+\end{table}
+
+\subsection{Images}
+
+Adding support for images could be very useful to a lot of users. We propose the following syntax for the exercise sheet DSL: \texttt{![caption](path/to/img.jpg)}. This syntax conforms to the \emph{Markdown} syntax for images. A drawback from this syntax is, that images can't be referenced from within text. Thus, we may change the syntax when adding image support.\\
+
+\subsection{Mathmatical formulars}
+
+A common task when creating exercise sheets is to embed mathmatical formulars. The \LaTeX{} math environment already provides a good DSL for mathmatical formulars. We may support the embedding of these formulars by adding the following syntax: \texttt{\$\LaTeX{} math formular\$}.\\
+
+\subsection{\emph{LaTeXercise} cli}
+
+The idea of the \emph{LaTeXercise} cli is to make the use of \LaTeX{} completely invisible to the user. The exercise sheet DSL is an abstraction of the \LaTeX{} syntax but the user still has to deal with the \LaTeX{} source created by the \emph{LaTeXercise} compiler.\\
+
+The \emph{LaTeXercise} cli provides a command-line interface and will immediately compile our exercise sheet DSL into a PDF. The example in Listing \ref{lst:cli-example} illustrates the usage of the cli.
+
+\begin{center}
+\begin{minipage}{0.6\textwidth}
+\begin{lstlisting}[caption={Example usage of the \emph{LaTeXercise} cli}, label=lst:cli-example]
+$ latexercise sheet01.exs
+Compiling to latex...done
+Compiling to pdf...done
+
+sheet01.pdf has been created successfully.
+\end{lstlisting}
+\end{minipage}
+\end{center}
+
+\end{document}
